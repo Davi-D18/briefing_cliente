@@ -1,5 +1,4 @@
-# Desafio 6 — Semana 1
-## Pessoa 4 — Qualidade e Integração
+## Qualidade e Integração
 
 > Responsável por revisar e consolidar todas as entregas, garantindo clareza, consistência e alinhamento com o briefing do cliente.
 
