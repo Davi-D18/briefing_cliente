@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Simulação de Erros e Logs</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --panel-soft: #1f2937;
+      --card: #ffffff;
+      --muted: #94a3b8;
+      --text: #e5e7eb;
+      --dark-text: #111827;
+      --soft-text: #475569;
+      --border: rgba(255, 255, 255, 0.12);
+      --accent: #60a5fa;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --radius: 22px;
+      --shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+      --mono: Consolas, Monaco, 'Courier New', monospace;
+      --font: Inter, Arial, Helvetica, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--font);
+      background:
+        radial-gradient(circle at top left, rgba(96, 165, 250, 0.28), transparent 34%),
+        radial-gradient(circle at bottom right, rgba(239, 68, 68, 0.18), transparent 32%),
+        var(--bg);
+      color: var(--text);
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    .app {
+      width: min(1220px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 32px 0;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 22px;
+      align-items: stretch;
+      margin-bottom: 22px;
+    }
+
+    .hero-card,
+    .stats-card,
+    .simulator,
+    .logs-panel {
+      border: 1px solid var(--border);
+      background: rgba(17, 24, 39, 0.78);
+      backdrop-filter: blur(16px);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-card {
+      padding: 28px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .hero-card::after {
+      content: "";
+      position: absolute;
+      width: 230px;
+      height: 230px;
+      right: -80px;
+      top: -80px;
+      background: rgba(96, 165, 250, 0.16);
+      border-radius: 999px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(96, 165, 250, 0.16);
+      color: #bfdbfe;
+      font-size: 13px;
+      margin-bottom: 20px;
+    }
+
+    .pulse {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--success);
+      box-shadow: 0 0 0 6px rgba(34, 197, 94, 0.12);
+    }
+
+    h1 {
+      margin: 0 0 14px;
+      font-size: clamp(32px, 6vw, 64px);
+      letter-spacing: -0.05em;
+      line-height: 0.95;
+    }
+
+    .hero-card p {
+      max-width: 680px;
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.7;
+      font-size: 16px;
+    }
+
+    .stats-card {
+      padding: 22px;
+      display: grid;
+      gap: 14px;
+      align-content: center;
+    }
+
+    .stat {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      padding: 16px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border);
+    }
+
+    .stat strong {
+      display: block;
+      font-size: 14px;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    .stat span {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .stat b {
+      font-size: 28px;
+      color: #ffffff;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 0.9fr 1.1fr;
+      gap: 22px;
+    }
+
+    .simulator,
+    .logs-panel {
+      padding: 22px;
+    }
+
+    .section-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .section-title h2 {
+      margin: 0;
+      font-size: 22px;
+      letter-spacing: -0.03em;
+    }
+
+    .section-title p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      line-height: 1.5;
+      font-size: 14px;
+    }
+
+    .scenario-grid {
+      display: grid;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .scenario-btn {
+      width: 100%;
+      text-align: left;
+      cursor: pointer;
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 16px;
+      transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+    }
+
+    .scenario-btn:hover,
+    .scenario-btn.active {
+      transform: translateY(-2px);
+      background: rgba(96, 165, 250, 0.14);
+      border-color: rgba(96, 165, 250, 0.45);
+    }
+
+    .scenario-btn strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 15px;
+    }
+
+    .scenario-btn span {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .browser {
+      background: #f8fafc;
+      color: var(--dark-text);
+      border-radius: 22px;
+      overflow: hidden;
+      box-shadow: 0 22px 80px rgba(0, 0, 0, 0.28);
+      border: 1px solid rgba(15, 23, 42, 0.12);
+      min-height: 540px;
+    }
+
+    .browser-bar {
+      height: 52px;
+      background: #e5e7eb;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 16px;
+      border-bottom: 1px solid #d1d5db;
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #cbd5e1;
+    }
+
+    .address {
+      flex: 1;
+      background: white;
+      color: #64748b;
+      border-radius: 999px;
+      padding: 9px 14px;
+      font-size: 13px;
+      border: 1px solid #dbe4ee;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .screen {
+      min-height: 488px;
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .top-nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 6px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 800;
+      color: #0f172a;
+    }
+
+    .brand-icon {
+      width: 36px;
+      height: 36px;
+      display: grid;
+      place-items: center;
+      border-radius: 12px;
+      background: #dbeafe;
+      color: #1d4ed8;
+      font-weight: 900;
+    }
+
+    .nav-pill {
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: #ecfdf5;
+      color: #166534;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .panel-content {
+      display: grid;
+      gap: 14px;
+    }
+
+    .user-card {
+      display: grid;
+      grid-template-columns: 58px 1fr auto;
+      gap: 14px;
+      align-items: center;
+      padding: 18px;
+      border-radius: 18px;
+      background: white;
+      border: 1px solid #e5e7eb;
+    }
+
+    .avatar {
+      width: 58px;
+      height: 58px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, #bfdbfe, #93c5fd);
+      display: grid;
+      place-items: center;
+      font-weight: 900;
+      color: #1e3a8a;
+    }
+
+    .user-card h3 {
+      margin: 0 0 4px;
+      font-size: 17px;
+    }
+
+    .user-card p {
+      margin: 0;
+      color: var(--soft-text);
+      font-size: 13px;
+    }
+
+    .tiny-btn {
+      border: 0;
+      background: #eff6ff;
+      color: #1d4ed8;
+      padding: 10px 12px;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 13px;
+    }
+
+    .post-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .post {
+      padding: 16px;
+      border-radius: 16px;
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+    }
+
+    .post h4 {
+      margin: 0 0 6px;
+      color: #0f172a;
+      font-size: 15px;
+    }
+
+    .post p {
+      margin: 0;
+      color: #64748b;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .friendly-state {
+      flex: 1;
+      min-height: 340px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 28px;
+      border-radius: 24px;
+      background:
+        radial-gradient(circle at top, rgba(96, 165, 250, 0.18), transparent 42%),
+        #ffffff;
+      border: 1px solid #e5e7eb;
+    }
+
+    .state-box {
+      max-width: 440px;
+    }
+
+    .state-icon {
+      width: 92px;
+      height: 92px;
+      margin: 0 auto 18px;
+      border-radius: 30px;
+      display: grid;
+      place-items: center;
+      background: #eff6ff;
+      color: #1d4ed8;
+      font-size: 42px;
+      font-weight: 900;
+    }
+
+    .state-icon.warning {
+      background: #fffbeb;
+      color: #b45309;
+    }
+
+    .state-icon.danger {
+      background: #fef2f2;
+      color: #b91c1c;
+    }
+
+    .friendly-state h3 {
+      margin: 0 0 10px;
+      font-size: 28px;
+      letter-spacing: -0.04em;
+      color: #0f172a;
+    }
+
+    .friendly-state p {
+      margin: 0 auto 18px;
+      color: #64748b;
+      line-height: 1.6;
+      font-size: 15px;
+    }
+
+    .primary-action {
+      border: 0;
+      cursor: pointer;
+      background: #2563eb;
+      color: white;
+      padding: 12px 16px;
+      border-radius: 14px;
+      font-weight: 800;
+      box-shadow: 0 12px 24px rgba(37, 99, 235, 0.22);
+    }
+
+    .console {
+      background: #020617;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 18px;
+      overflow: hidden;
+    }
+
+    .console-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 14px;
+      background: rgba(255, 255, 255, 0.06);
+      color: #cbd5e1;
+      font-size: 13px;
+    }
+
+    .console-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .console-actions button {
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(255, 255, 255, 0.06);
+      color: #e5e7eb;
+      padding: 8px 10px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .log-output {
+      margin: 0;
+      min-height: 448px;
+      max-height: 448px;
+      overflow: auto;
+      padding: 16px;
+      color: #d1fae5;
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 1.7;
+      white-space: pre-wrap;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 7px 10px;
+      background: rgba(255, 255, 255, 0.08);
+      color: #cbd5e1;
+      font-size: 12px;
+      border: 1px solid var(--border);
+    }
+
+    .toast {
+      position: fixed;
+      right: 22px;
+      bottom: 22px;
+      max-width: 360px;
+      padding: 16px;
+      border-radius: 18px;
+      background: #ffffff;
+      color: #0f172a;
+      box-shadow: 0 22px 70px rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(15, 23, 42, 0.1);
+      transform: translateY(24px);
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.25s ease;
+    }
+
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .toast strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .toast p {
+      margin: 0;
+      color: #64748b;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 980px) {
+      .hero,
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .screen {
+        padding: 18px;
+      }
+
+      .user-card {
+        grid-template-columns: 52px 1fr;
+      }
+
+      .user-card .tiny-btn {
+        grid-column: 1 / -1;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .app {
+        width: min(100% - 20px, 1220px);
+        padding: 18px 0;
+      }
+
+      .hero-card,
+      .stats-card,
+      .simulator,
+      .logs-panel {
+        padding: 16px;
+        border-radius: 18px;
+      }
+
+      .browser {
+        border-radius: 18px;
+      }
+
+      .browser-bar {
+        padding: 0 10px;
+      }
+
+      .address {
+        font-size: 11px;
+      }
+
+      .friendly-state h3 {
+        font-size: 22px;
+      }
+
+      .log-output {
+        font-size: 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="hero">
+      <div class="hero-card">
+        <div class="eyebrow"><span class="pulse"></span> Tradutor técnico em execução</div>
+        <h1>Erros claros para usuários, logs úteis para devs.</h1>
+        <p>
+          Esta simulação mostra como um painel pode transformar falhas da API em mensagens amigáveis, enquanto registra logs técnicos para investigação. Clique nos cenários para ver a página de erro e o log gerado.
+        </p>
+      </div>
+
+      <aside class="stats-card">
+        <div class="stat">
+          <div>
+            <strong>Mensagens amigáveis</strong>
+            <span>Exibidas para o usuário final</span>
+          </div>
+          <b id="friendlyCount">0</b>
+        </div>
+        <div class="stat">
+          <div>
+            <strong>Logs técnicos</strong>
+            <span>Registrados para investigação</span>
+          </div>
+          <b id="logCount">0</b>
+        </div>
+        <div class="stat">
+          <div>
+            <strong>Status atual</strong>
+            <span id="currentStatus">Painel carregado</span>
+          </div>
+          <span class="tag" id="statusTag">OK</span>
+        </div>
+      </aside>
+    </section>
+
+    <section class="layout">
+      <aside class="simulator">
+        <div class="section-title">
+          <div>
+            <h2>Cenários de teste</h2>
+            <p>Escolha um problema para simular a resposta da tela e o log interno.</p>
+          </div>
+        </div>
+
+        <div class="scenario-grid" id="scenarioGrid"></div>
+      </aside>
+
+      <section class="browser" aria-label="Prévia do painel do usuário">
+        <div class="browser-bar">
+          <span class="dot"></span>
+          <span class="dot"></span>
+          <span class="dot"></span>
+          <div class="address" id="addressBar">https://painel.exemplo.com/dashboard</div>
+        </div>
+        <div class="screen" id="screen"></div>
+      </section>
+    </section>
+
+    <section class="logs-panel" style="margin-top: 22px;">
+      <div class="section-title">
+        <div>
+          <h2>Console de logs</h2>
+          <p>O usuário não vê esta área. Ela representa o registro interno usado pela equipe técnica.</p>
+        </div>
+        <span class="tag">tradutor_tecnico/log.md</span>
+      </div>
+
+      <div class="console">
+        <div class="console-head">
+          <span>logs internos</span>
+          <div class="console-actions">
+            <button id="copyLogs">Copiar logs</button>
+            <button id="clearLogs">Limpar</button>
+          </div>
+        </div>
+        <pre class="log-output" id="logOutput">Nenhum log registrado ainda. Escolha um cenário de teste.</pre>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast">
+    <strong>Log registrado</strong>
+    <p>O usuário recebeu uma mensagem simples e o erro foi salvo para investigação.</p>
+  </div>
+
+  <script>
+    const scenarios = [
+      {
+        id: 'success',
+        title: 'Carregamento normal',
+        description: 'A API responde corretamente e o painel mostra dados.',
+        endpoint: 'GET /users/1',
+        status: '200',
+        type: 'INFO_CARREGAMENTO',
+        address: 'https://painel.exemplo.com/users/1',
+        message: 'Dados carregados com sucesso.',
+        details: 'Resposta válida recebida da API.',
+        screenType: 'success'
+      },
+      {
+        id: 'user-404',
+        title: 'Usuário não encontrado',
+        description: 'O ID solicitado não existe na API.',
+        endpoint: 'GET /users/9999',
+        status: '404',
+        type: 'RECURSO_NAO_ENCONTRADO',
+        address: 'https://painel.exemplo.com/users/9999',
+        message: 'Usuário não encontrado.',
+        support: 'Confira se o usuário selecionado está correto ou volte para a lista.',
+        details: 'ID inexistente para o recurso users.',
+        icon: '?',
+        tone: 'warning'
+      },
+      {
+        id: 'post-404',
+        title: 'Post não encontrado',
+        description: 'A tela tentou carregar um post inexistente.',
+        endpoint: 'GET /posts/9999',
+        status: '404',
+        type: 'RECURSO_NAO_ENCONTRADO',
+        address: 'https://painel.exemplo.com/posts/9999',
+        message: 'Post não encontrado.',
+        support: 'Esse conteúdo pode ter sido removido ou não estar disponível.',
+        details: 'ID inexistente para o recurso posts.',
+        icon: '!',
+        tone: 'warning'
+      },
+      {
+        id: 'empty-posts',
+        title: 'Busca sem resultado',
+        description: 'A consulta funcionou, mas retornou uma lista vazia.',
+        endpoint: 'GET /posts?userId=9999',
+        status: '200',
+        type: 'BUSCA_SEM_RESULTADO',
+        address: 'https://painel.exemplo.com/users/9999/posts',
+        message: 'Este usuário não possui posts no momento.',
+        support: 'Quando novos posts forem publicados, eles aparecerão aqui.',
+        details: 'Query executada com sucesso, retorno vazio [].',
+        icon: '0',
+        tone: 'info'
+      },
+      {
+        id: 'empty-comments',
+        title: 'Sem comentários',
+        description: 'O post existe, mas ainda não possui comentários.',
+        endpoint: 'GET /comments?postId=9999',
+        status: '200',
+        type: 'BUSCA_SEM_RESULTADO',
+        address: 'https://painel.exemplo.com/posts/9999/comments',
+        message: 'Nenhum comentário foi encontrado para este post.',
+        support: 'Os comentários aparecerão nesta área quando estiverem disponíveis.',
+        details: 'Consulta válida, retorno vazio [].',
+        icon: '0',
+        tone: 'info'
+      },
+      {
+        id: 'bad-route',
+        title: 'Rota inválida',
+        description: 'O sistema tentou acessar um caminho que não existe.',
+        endpoint: 'GET /usuario/1',
+        status: '404',
+        type: 'ROTA_INVALIDA',
+        address: 'https://painel.exemplo.com/usuario/1',
+        message: 'Não conseguimos carregar essa informação.',
+        support: 'Tente voltar para a página anterior ou acessar novamente pelo menu.',
+        details: 'Endpoint inexistente. Verificar mapeamento da rota no serviço.',
+        icon: '!',
+        tone: 'danger'
+      },
+      {
+        id: 'timeout',
+        title: 'Falha de conexão',
+        description: 'A API demorou demais para responder.',
+        endpoint: 'GET /users',
+        status: 'sem resposta',
+        type: 'ERRO_DE_CONEXAO',
+        address: 'https://painel.exemplo.com/users',
+        message: 'Não foi possível carregar as informações agora.',
+        support: 'Tente novamente em instantes.',
+        details: 'Timeout após 8000ms. Verificar rede ou disponibilidade da API.',
+        icon: 'x',
+        tone: 'danger'
+      },
+      {
+        id: 'unexpected',
+        title: 'Erro inesperado',
+        description: 'Algo não previsto aconteceu durante a ação.',
+        endpoint: 'GET /dashboard',
+        status: '500',
+        type: 'ERRO_INESPERADO',
+        address: 'https://painel.exemplo.com/dashboard',
+        message: 'Algo deu errado.',
+        support: 'Tente novamente mais tarde. Se o problema continuar, entre em contato com o suporte.',
+        details: 'Erro genérico capturado pelo tratador global da aplicação.',
+        icon: 'x',
+        tone: 'danger'
+      }
+    ];
+
+    const scenarioGrid = document.getElementById('scenarioGrid');
+    const screen = document.getElementById('screen');
+    const logOutput = document.getElementById('logOutput');
+    const toast = document.getElementById('toast');
+    const addressBar = document.getElementById('addressBar');
+    const friendlyCount = document.getElementById('friendlyCount');
+    const logCount = document.getElementById('logCount');
+    const currentStatus = document.getElementById('currentStatus');
+    const statusTag = document.getElementById('statusTag');
+    const clearLogs = document.getElementById('clearLogs');
+    const copyLogs = document.getElementById('copyLogs');
+
+    let logs = [];
+    let friendlyMessages = 0;
+
+    function buildButtons() {
+      scenarios.forEach((scenario) => {
+        const button = document.createElement('button');
+        button.className = 'scenario-btn';
+        button.dataset.id = scenario.id;
+        button.innerHTML = `
+          <strong>${scenario.title}</strong>
+          <span>${scenario.description}</span>
+        `;
+        button.addEventListener('click', () => simulate(scenario.id));
+        scenarioGrid.appendChild(button);
+      });
+    }
+
+    function setActive(id) {
+      document.querySelectorAll('.scenario-btn').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.id === id);
+      });
+    }
+
+    function renderSuccess() {
+      screen.innerHTML = `
+        <div class="top-nav">
+          <div class="brand"><div class="brand-icon">T</div> Painel Técnico</div>
+          <div class="nav-pill">online</div>
+        </div>
+        <div class="panel-content">
+          <div class="user-card">
+            <div class="avatar">LD</div>
+            <div>
+              <h3>Leanne Graham</h3>
+              <p>Usuário carregado com sucesso pela API.</p>
+            </div>
+            <button class="tiny-btn">Ver detalhes</button>
+          </div>
+          <div class="post-list">
+            <div class="post">
+              <h4>Primeiro post do usuário</h4>
+              <p>Esse card representa um dado carregado sem falhas.</p>
+            </div>
+            <div class="post">
+              <h4>Segundo post do usuário</h4>
+              <p>Quando tudo funciona, a tela mostra conteúdo normalmente.</p>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderError(scenario) {
+      const iconClass = scenario.tone === 'danger' ? 'danger' : scenario.tone === 'warning' ? 'warning' : '';
+      screen.innerHTML = `
+        <div class="top-nav">
+          <div class="brand"><div class="brand-icon">T</div> Painel Técnico</div>
+          <div class="nav-pill">mensagem amigável</div>
+        </div>
+        <div class="friendly-state">
+          <div class="state-box">
+            <div class="state-icon ${iconClass}">${scenario.icon}</div>
+            <h3>${scenario.message}</h3>
+            <p>${scenario.support}</p>
+            <button class="primary-action" onclick="window.dispatchEvent(new Event('retrySimulation'))">Tentar novamente</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function createLog(scenario) {
+      const now = new Date();
+      const formattedDate = now.toLocaleString('pt-BR');
+
+      return `[${scenario.type}]
+Data/Hora: ${formattedDate}
+Ação do usuário: ${getAction(scenario.id)}
+Endpoint: ${scenario.endpoint}
+Status HTTP: ${scenario.status}
+Resultado: ${scenario.message}
+Tela/Contexto: ${getContext(scenario.id)}
+Mensagem exibida ao usuário: "${scenario.message}"
+Detalhes técnicos: ${scenario.details}`;
+    }
+
+    function getAction(id) {
+      const actions = {
+        success: 'carregar painel do usuário',
+        'user-404': 'visualizar usuário',
+        'post-404': 'visualizar post',
+        'empty-posts': 'listar posts do usuário',
+        'empty-comments': 'listar comentários do post',
+        'bad-route': 'acessar dados de usuário',
+        timeout: 'carregar lista de usuários',
+        unexpected: 'abrir painel principal'
+      };
+      return actions[id] || 'ação não mapeada';
+    }
+
+    function getContext(id) {
+      const contexts = {
+        success: 'Dashboard principal',
+        'user-404': 'Tela de detalhe do usuário',
+        'post-404': 'Tela de detalhe do post',
+        'empty-posts': 'Lista de posts do usuário',
+        'empty-comments': 'Área de comentários do post',
+        'bad-route': 'Roteamento do painel',
+        timeout: 'Tela de usuários',
+        unexpected: 'Dashboard principal'
+      };
+      return contexts[id] || 'Contexto não mapeado';
+    }
+
+    function simulate(id) {
+      const scenario = scenarios.find((item) => item.id === id);
+      if (!scenario) return;
+
+      setActive(id);
+      addressBar.textContent = scenario.address;
+      currentStatus.textContent = scenario.title;
+      statusTag.textContent = scenario.status;
+
+      if (scenario.screenType === 'success') {
+        renderSuccess();
+      } else {
+        renderError(scenario);
+        friendlyMessages += 1;
+        friendlyCount.textContent = friendlyMessages;
+      }
+
+      const log = createLog(scenario);
+      logs.unshift(log);
+      renderLogs();
+      showToast(scenario.screenType === 'success' ? 'Carregamento registrado' : 'Log registrado', scenario.screenType === 'success' ? 'A operação foi concluída e registrada no console.' : 'O usuário recebeu uma mensagem simples e o erro foi salvo para investigação.');
+    }
+
+    function renderLogs() {
+      logCount.textContent = logs.length;
+      logOutput.textContent = logs.length ? logs.join('\n\n') : 'Nenhum log registrado ainda. Escolha um cenário de teste.';
+    }
+
+    function showToast(title, text) {
+      toast.querySelector('strong').textContent = title;
+      toast.querySelector('p').textContent = text;
+      toast.classList.add('show');
+      window.clearTimeout(showToast.timer);
+      showToast.timer = window.setTimeout(() => toast.classList.remove('show'), 2600);
+    }
+
+    clearLogs.addEventListener('click', () => {
+      logs = [];
+      renderLogs();
+      showToast('Logs limpos', 'O console foi reiniciado para uma nova simulação.');
+    });
+
+    copyLogs.addEventListener('click', async () => {
+      const content = logs.length ? logs.join('\n\n') : '';
+      if (!content) {
+        showToast('Nada para copiar', 'Execute uma simulação antes de copiar os logs.');
+        return;
+      }
+
+      try {
+        await navigator.clipboard.writeText(content);
+        showToast('Logs copiados', 'O conteúdo do console foi copiado para a área de transferência.');
+      } catch (error) {
+        showToast('Cópia indisponível', 'Seu navegador bloqueou a cópia automática.');
+      }
+    });
+
+    window.addEventListener('retrySimulation', () => {
+      simulate('success');
+    });
+
+    buildButtons();
+    simulate('success');
+  </script>
+</body>
+</html>
