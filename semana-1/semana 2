@@ -1,1 +1,156 @@
+# Registro de Logs do Sistema
+
+## Objetivo
+
+Os logs servem para investigar erros, entender o comportamento do sistema e apoiar a equipe técnica no diagnóstico de problemas. Eles registram, de forma estruturada, o que aconteceu durante as chamadas à API e a navegação no painel, permitindo que falhas sejam analisadas mesmo depois que o usuário fechou a tela.
+
+Os logs são uma ferramenta interna. O usuário final nunca deve ter acesso ao seu conteúdo, nem perceber sua existência. Toda informação técnica fica disponível apenas para os desenvolvedores, em arquivos, console ou ferramentas de monitoramento.
+
+## Princípios
+
+- Nunca mostrar logs ao usuário final, em nenhuma circunstância.
+- Sempre registrar erros relevantes que possam afetar o uso do painel.
+- Manter mensagens de log claras, curtas e padronizadas, para facilitar a leitura.
+- Evitar informações desnecessárias, dados sensíveis ou ruído que dificulte a investigação.
+- Registrar contexto suficiente para reproduzir o problema (ação, tela, endpoint e status).
+- Manter separação clara entre a mensagem amigável (exibida ao usuário) e o log técnico (registrado pelo sistema).
+- Padronizar a estrutura dos logs em todas as telas, para que qualquer pessoa da equipe consiga interpretá-los.
+
+## Estrutura do Log
+
+Todo log deve seguir o formato padrão abaixo:
+
+```txt
+[TIPO_DO_EVENTO]
+Data/Hora:
+Ação do usuário:
+Endpoint:
+Status HTTP:
+Resultado:
+Tela/Contexto:
+Mensagem exibida ao usuário:
+Detalhes técnicos:
+```
+
+Explicação dos campos:
+
+- **TIPO_DO_EVENTO:** categoria do log, escrita em caixa alta entre colchetes. Permite filtrar e agrupar ocorrências.
+- **Data/Hora:** momento exato em que o evento aconteceu, no formato `AAAA-MM-DD HH:MM`.
+- **Ação do usuário:** o que o usuário tentou fazer no painel (ex.: "visualizar post", "listar usuários").
+- **Endpoint:** método e rota da API que foi chamada (ex.: `GET /posts/10`).
+- **Status HTTP:** código de resposta retornado pela API (ex.: 200, 404, 500). Quando não houver resposta, usar `sem resposta`.
+- **Resultado:** descrição curta do que aconteceu (ex.: "post não encontrado", "lista vazia").
+- **Tela/Contexto:** local do painel onde a ação ocorreu (ex.: "Detalhe do post", "Listagem de usuários").
+- **Mensagem exibida ao usuário:** texto amigável que apareceu na tela, registrado para correlação.
+- **Detalhes técnicos:** informação adicional para debugging (ex.: ID inexistente, mensagem de exceção, timeout). Sem dados pessoais ou sensíveis.
+
+## Tipos de Logs
+
+- **ERRO_API:** usar quando a API responde com falha (status 5xx) ou retorna um payload inválido. Indica problema no servidor ou na resposta.
+- **RECURSO_NAO_ENCONTRADO:** usar quando a API retorna 404 para um recurso específico (usuário, post ou comentário) que não existe.
+- **BUSCA_SEM_RESULTADO:** usar quando a API responde com 200, mas a lista retornada está vazia (`[]`). Não é um erro, mas precisa ser registrado para entender padrões de uso.
+- **ERRO_DE_CONEXAO:** usar quando a requisição falha por timeout, perda de rede ou impossibilidade de alcançar a API.
+- **ROTA_INVALIDA:** usar quando o sistema tenta acessar uma rota inexistente da API e recebe 404 não vinculado a um recurso específico.
+- **ERRO_INESPERADO:** usar para qualquer falha não prevista pelas categorias acima, incluindo exceções em runtime no painel.
+
+## Exemplos práticos
+
+Recurso não encontrado:
+
+```txt
+[RECURSO_NAO_ENCONTRADO]
+Data/Hora: 2026-04-26 23:40
+Ação do usuário: visualizar post
+Endpoint: GET /posts/9999
+Status HTTP: 404
+Resultado: post não encontrado
+Tela: Detalhe do post
+Mensagem exibida ao usuário: "Post não encontrado."
+Detalhes técnicos: ID inexistente
+```
+
+Busca sem resultado:
+
+```txt
+[BUSCA_SEM_RESULTADO]
+Data/Hora: 2026-04-26 23:42
+Ação do usuário: listar posts do usuário
+Endpoint: GET /posts?userId=42
+Status HTTP: 200
+Resultado: lista vazia
+Tela: Posts do usuário
+Mensagem exibida ao usuário: "Este usuário não possui posts no momento."
+Detalhes técnicos: array retornado com tamanho 0
+```
+
+Erro de API:
+
+```txt
+[ERRO_API]
+Data/Hora: 2026-04-26 23:45
+Ação do usuário: listar usuários
+Endpoint: GET /users
+Status HTTP: 500
+Resultado: falha no servidor da API
+Tela: Listagem de usuários
+Mensagem exibida ao usuário: "Não foi possível carregar as informações agora. Tente novamente mais tarde."
+Detalhes técnicos: resposta sem corpo válido, body retornado: "Internal Server Error"
+```
+
+Rota inválida:
+
+```txt
+[ROTA_INVALIDA]
+Data/Hora: 2026-04-26 23:48
+Ação do usuário: navegar para tela de relatórios
+Endpoint: GET /relatorios
+Status HTTP: 404
+Resultado: rota inexistente na API
+Tela: Tela de relatórios
+Mensagem exibida ao usuário: "Não foi possível encontrar as informações solicitadas."
+Detalhes técnicos: endpoint não previsto pela JSONPlaceholder
+```
+
+Erro de conexão:
+
+```txt
+[ERRO_DE_CONEXAO]
+Data/Hora: 2026-04-26 23:50
+Ação do usuário: carregar comentários do post
+Endpoint: GET /posts/3/comments
+Status HTTP: sem resposta
+Resultado: timeout na requisição
+Tela: Detalhe do post
+Mensagem exibida ao usuário: "Não foi possível carregar as informações agora. Tente novamente mais tarde."
+Detalhes técnicos: fetch abortado após 10s, possível falha de rede do cliente
+```
+
+Erro inesperado:
+
+```txt
+[ERRO_INESPERADO]
+Data/Hora: 2026-04-26 23:55
+Ação do usuário: abrir detalhes do usuário
+Endpoint: GET /users/3
+Status HTTP: 200
+Resultado: falha ao processar resposta
+Tela: Detalhe do usuário
+Mensagem exibida ao usuário: "Algo deu errado. Tente novamente mais tarde."
+Detalhes técnicos: TypeError: Cannot read properties of undefined (reading 'company')
+```
+
+## Boas práticas
+
+- Manter consistência: usar os mesmos nomes de tipos, campos e formatos em todas as telas.
+- Evitar duplicação: não registrar o mesmo evento várias vezes na mesma ação do usuário.
+- Registrar apenas o necessário: o log precisa ser útil para investigação, não um espelho de tudo que acontece.
+- Facilitar a leitura: preferir frases curtas, sem jargão excessivo e sem dados ruidosos.
+- Padronizar entre telas: a mesma falha em telas diferentes deve gerar logs com a mesma estrutura.
+- Não registrar dados sensíveis: evitar tokens, senhas, e-mails de terceiros ou qualquer informação pessoal não necessária.
+- Correlacionar com a mensagem do usuário: sempre incluir o texto amigável que foi exibido, para facilitar o suporte.
+- Revisar logs periodicamente: ajustar tipos e campos conforme o sistema evolui e novos cenários aparecem.
+
+## Conclusão
+
+Logs bem estruturados são a base para manter o sistema confiável. Eles permitem diagnóstico rápido quando algo dá errado, ajudam a equipe a identificar padrões de falha e dão suporte à melhoria contínua do painel. Quando os logs estão claros e padronizados, problemas são resolvidos com menos esforço, o usuário final percebe menos impacto e a confiança no produto cresce.
 
