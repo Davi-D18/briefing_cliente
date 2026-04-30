@@ -1,8 +1,3 @@
-Com certeza, Eduardo! Para ficar perfeito no VS Code, o ideal é usar a formatação de Markdown padrão. Vou deixar o texto exatamente como você precisa: é só copiar o bloco abaixo, criar um arquivo chamado `README.md` no seu projeto, colar o conteúdo e salvar.
-
-Quando você abrir no VS Code, ele vai renderizar com títulos, listas e negritos bem organizados.
-
-```markdown
 # README - Atividade 6 - Semana 2
 
 ## Sobre a Atividade
@@ -45,5 +40,3 @@ Estamos tratando situações como:
 
 O objetivo principal aqui é não deixar o usuário na mão. Queremos um sistema que seja resiliente, transparente e fácil de usar, mesmo quando as coisas não saem como o esperado.
 ```
-
-Prontinho! Agora é só copiar e colar. Vai ficar com uma cara super profissional no seu VS Code! Precisa de mais alguma ajuda com o código?
