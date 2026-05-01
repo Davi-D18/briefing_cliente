@@ -1,4 +1,3 @@
-
 ## 📋 Sobre o Projeto
 
 O cliente pediu um painel simples para visualizar usuários, acessar os posts de cada um e ver os comentários de um post. Como ele não é técnico, tudo precisa ser comunicado de forma acessível — inclusive os erros, que devem aparecer com mensagens amigáveis, sem expor detalhes técnicos.
